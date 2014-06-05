@@ -76,7 +76,7 @@ static unsigned int 	battery_current;
 static unsigned int  battery_remaining_capacity;
 struct workqueue_struct *bq27541_battery_work_queue = NULL;
 static unsigned int battery_check_interval = BATTERY_POLLING_RATE;
-static char *status_text[] = {"Unknown", "Charging", "Discharging", "Not charging", "Full"};
+//static char *status_text[] = {"Unknown", "Charging", "Discharging", "Not charging", "Full"};
 
 /* Functions declaration */
 static int bq27541_get_psp(int reg_offset, enum power_supply_property psp,union power_supply_propval *val);
@@ -459,15 +459,16 @@ int bq27541_battery_callback(unsigned usb_cable_state)
 
 	if(!bq27541_battery_driver_ready) {
 		BAT_NOTICE("battery driver not ready\n");
+		printk("bq27541_battery_callback !bq27541_battery_driver_ready\n");
 		return 0;
 	}
 
 	old_cable_status = bq27541_battery_cable_status;
 	bq27541_battery_cable_status = usb_cable_state;
 
-       printk("========================================================\n");
+	printk("========================================================\n");
 	printk("bq27541_battery_callback  usb_cable_state = %x\n", usb_cable_state) ;
-       printk("========================================================\n");
+	printk("========================================================\n");
 
 	if (old_cable_status != bq27541_battery_cable_status) {
 		printk(KERN_INFO"battery_callback cable_wake_lock 5 sec...\n ");
@@ -559,12 +560,14 @@ static int bq27541_get_psp(int reg_offset, enum power_supply_property psp,
 		} else {
 			val->intval = bq27541_device->bat_vol;
 		}
-		BAT_NOTICE("voltage_now= %u uV\n", val->intval);
+		// tmtmtm
+		//BAT_NOTICE("voltage_now= %u uV\n", val->intval);
 	}
 	if (psp == POWER_SUPPLY_PROP_STATUS) {
 		ret = bq27541_device->bat_status = rt_value;
 
-		if ((ac_on || usb_on || wireless_on) && !otg_on) {/* Charging detected */
+											// tmtmtm: fix
+		if ((ac_on || usb_on || wireless_on) /*&& !otg_on*/) {/* Charging detected */
 			if (bq27541_device->old_capacity == 100) {
 				val->intval = POWER_SUPPLY_STATUS_FULL;
 			} else {
@@ -575,7 +578,8 @@ static int bq27541_get_psp(int reg_offset, enum power_supply_property psp,
 		} else {
 			val->intval = POWER_SUPPLY_STATUS_NOT_CHARGING;
 		}
-		BAT_NOTICE("status: %s ret= 0x%04x\n", status_text[val->intval], ret);
+		// tmtmtm
+		//BAT_NOTICE("status: %s ret= 0x%04x\n", status_text[val->intval], ret);
 
 	} else if (psp == POWER_SUPPLY_PROP_TEMP) {
 		ret = bq27541_device->bat_temp = rt_value;
@@ -604,7 +608,8 @@ static int bq27541_get_psp(int reg_offset, enum power_supply_property psp,
 		}
 
 		bq27541_device->old_temperature = val->intval = ret;
-		BAT_NOTICE("temperature= %d (0.1¢XC)\n", val->intval);
+		// tmtmtm
+		//BAT_NOTICE("temperature= %d (0.1C)\n", val->intval);
 	}
 	if (psp == POWER_SUPPLY_PROP_CURRENT_NOW) {
 		val->intval = bq27541_device->bat_current
@@ -707,7 +712,8 @@ static int bq27541_get_capacity(union power_supply_propval *val)
 	bq27541_device->old_capacity = val->intval;
 	bq27541_device->cap_err=0;
 
-	BAT_NOTICE("= %u%% ret= %u\n", val->intval, ret);
+	// tmtmtm
+	//BAT_NOTICE("= %u%% ret= %u\n", val->intval, ret);
 	return 0;
 }
 
@@ -768,8 +774,10 @@ static int bq27541_probe(struct i2c_client *client,
 
 	BAT_NOTICE("+ client->addr= %02x\n", client->addr);
 	bq27541_device = kzalloc(sizeof(*bq27541_device), GFP_KERNEL);
-	if (!bq27541_device)
+	if (!bq27541_device) {
+		printk("bq27541_probe -ENOMEM\n");
 		return -ENOMEM;
+	}
 
 	memset(bq27541_device, 0, sizeof(*bq27541_device));
 	bq27541_device->client = client;
@@ -789,6 +797,7 @@ static int bq27541_probe(struct i2c_client *client,
 			while (i--)
 				power_supply_unregister(&bq27541_supply[i]);
 				kfree(bq27541_device);
+			printk("bq27541_probe ret=%d\n",ret);
 			return ret;
 		}
 	}
@@ -806,6 +815,7 @@ static int bq27541_probe(struct i2c_client *client,
 	/* Register sysfs */
 	ret = sysfs_create_group(&client->dev.kobj, &battery_smbus_group);
 	if (ret) {
+		printk("bq27541_probe unable to create the sysfs\n");
 		dev_err(&client->dev, "bq27541_probe: unable to create the sysfs\n");
 	}
 
