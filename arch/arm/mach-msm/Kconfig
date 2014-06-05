@@ -2618,4 +2618,10 @@ config MSM_CPU_PWRCTL
 	  stand alone power collapse operation. Selecting this option
 	  ensures that they are always off.
 
+config USBHOST  # tmtmtm
+	bool "USBHOST related runtime configuration"
+	default y
+ 	help
+ 	  A simple sysfs interface to allow switching between OTG and FI mode.
+
 endif
